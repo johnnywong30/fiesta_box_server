@@ -1,0 +1,26 @@
+services:
+  fiesta-box:
+      build: 
+        context: .
+        dockerfile: dev.Dockerfile
+      ports:
+        - 8080:8080
+      volumes:
+        - ./src:/src/
+
+
+  # # Use postgres/example user/password credentials
+  # db:
+  #   image: postgres
+  #   restart: always
+  #   shm_size: 128mb
+  #   environment:
+  #     POSTGRES_PASSWORD: example
+
+  # adminer:
+  #   image: adminer
+  #   restart: always
+  #   ports:
+  #     - 8080:8080
+
+  
