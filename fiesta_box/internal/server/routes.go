@@ -34,6 +34,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 	handlers.RegisterHandler(messages.MessageTypePerformPrompt, handlers.PerformPromptHandler)
 	handlers.RegisterHandler(messages.MessageTypeDrinkForPrompt, handlers.DrinkForPromptHandler)
 	handlers.RegisterHandler(messages.MessageTypeChangePlayerName, handlers.ChangePlayerNameHandler)
+	handlers.RegisterHandler(messages.MessageTypeJoinGame, handlers.JoinGameHandler)
+	handlers.RegisterHandler(messages.MessageTypeLeaveGame, handlers.LeaveGameHandler)
+	handlers.RegisterHandler(messages.MessageTypeCreateGame, handlers.CreateGameHandler)
 
 	r.HandleFunc("/websocket", s.websocketHandler)
 

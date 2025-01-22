@@ -129,3 +129,39 @@ func ChangePlayerNameHandler(msg messages.Message) (responses.SocketResponse, er
 	}
 	return response, nil
 }
+
+func JoinGameHandler(msg messages.Message) (responses.SocketResponse, error) {
+	// TODO: unmarshal content JSON string
+
+	// TODO: Join game logic	
+
+	response := responses.SocketResponse{
+		Status: responses.Success,
+		Message: "Joined game X.",
+	}
+	return response, nil
+}
+
+func LeaveGameHandler(msg messages.Message) (responses.SocketResponse, error) {
+	// TODO: unmarshal content JSON string to get game id
+
+	// TODO: Leave game logic	
+
+	response := responses.SocketResponse{
+		Status: responses.Success,
+		Message: "Left game X.",
+	}
+	return response, nil
+}
+
+func CreateGameHandler(msg messages.Message) (responses.SocketResponse, error) {
+	// TODO: unmarshal content JSON string
+
+	// TODO: Create game logic	
+
+	response := responses.SocketResponse{
+		Status: responses.Success,
+		Message: "Created game X.",
+	}
+	return response, nil
+}

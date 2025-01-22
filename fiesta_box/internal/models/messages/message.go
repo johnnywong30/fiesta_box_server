@@ -12,6 +12,9 @@ const (
 	MessageTypePerformPrompt MessageType 		= "perform_prompt"
 	MessageTypeDrinkForPrompt MessageType 		= "drink_for_prompt"
 	MessageTypeChangePlayerName MessageType 	= "change_player_name"
+	MessageTypeJoinGame MessageType 			= "join_game"
+	MessageTypeLeaveGame MessageType 			= "leave_game"
+	MessageTypeCreateGame MessageType 			= "create_game"
 )
 
 type MessageInterface interface {
