@@ -5,13 +5,14 @@ import (
 	"log"
 	"net/http"
 
-	"fmt"
-	"time"
-
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 
-	"github.com/coder/websocket"
+	"fiesta_box/internal/handlers"
+	"fiesta_box/internal/models/messages"
 )
+
+var upgrader = websocket.Upgrader{}
 
 func (s *Server) RegisterRoutes() http.Handler {
 	r := mux.NewRouter()
@@ -23,7 +24,21 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	r.HandleFunc("/health", s.healthHandler)
 
+	// Register websocket message handlers
+	handlers.RegisterHandler(messages.MessageTypeStartGame, handlers.StartGameHandler)
+	handlers.RegisterHandler(messages.MessageTypeTransferMaster, handlers.TransferMasterHandler)
+	handlers.RegisterHandler(messages.MessageTypeConfigurePromptCount, handlers.ConfigurePromptHandler)
+	handlers.RegisterHandler(messages.MessageTypeUseSavedPrompt, handlers.UseSavedPromptHandler)
+	handlers.RegisterHandler(messages.MessageTypeWritePrompt, handlers.WritePromptHandler)
+	handlers.RegisterHandler(messages.MessageTypeReceivePrompt, handlers.ReceivePromptHandler)
+	handlers.RegisterHandler(messages.MessageTypePerformPrompt, handlers.PerformPromptHandler)
+	handlers.RegisterHandler(messages.MessageTypeDrinkForPrompt, handlers.DrinkForPromptHandler)
+	handlers.RegisterHandler(messages.MessageTypeChangePlayerName, handlers.ChangePlayerNameHandler)
+
 	r.HandleFunc("/websocket", s.websocketHandler)
+
+	// r.HandleFunc("/gorilla", s.GorillaHandler)
+
 
 	return r
 }
@@ -59,6 +74,20 @@ func (s *Server) HelloWorldHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(jsonResp)
 }
 
+// func (s *Server) GorillaHandler(w http.ResponseWriter, r *http.Request) {
+// 	// Use interface{} to avoid type assertions and use any type for the value in the JSON
+// 	resp := make(map[string]interface{})
+// 	resp["name"] = "Johnny"
+// 	resp["weight"] = 170
+
+// 	jsonResp, err := json.Marshal(resp)
+// 	if err != nil {
+// 		log.Fatalf("error handling JSON marshal. Err: %v", err)
+// 	}
+
+// 	_, _ = w.Write(jsonResp)
+// }
+
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	jsonResp, err := json.Marshal(s.db.Health())
 
@@ -70,7 +99,7 @@ func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) websocketHandler(w http.ResponseWriter, r *http.Request) {
-	socket, err := websocket.Accept(w, r, nil)
+	c, err := upgrader.Upgrade(w, r, nil)
 
 	if err != nil {
 		log.Printf("could not open websocket: %v", err)
@@ -79,17 +108,41 @@ func (s *Server) websocketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer socket.Close(websocket.StatusGoingAway, "server closing websocket")
-
-	ctx := r.Context()
-	socketCtx := socket.CloseRead(ctx)
+	defer c.Close()
 
 	for {
-		payload := fmt.Sprintf("server timestamp: %d", time.Now().UnixNano())
-		err := socket.Write(socketCtx, websocket.MessageText, []byte(payload))
+		mt, message, err := c.ReadMessage()
 		if err != nil {
+			log.Println("Error on reading message from client:", err)
 			break
 		}
-		time.Sleep(time.Second * 2)
+		log.Printf("Received from client the message: %s", message)
+
+		// Determine message type
+		var clientMsg messages.Message
+		err = json.Unmarshal(message, &clientMsg)
+
+		if err != nil {
+			log.Println("Error on parsing JSON message from client:", err)
+			break
+		}
+
+		response, err := handlers.HandleMessage(clientMsg)
+		if err != nil {
+			log.Println("Error on handling message from client:", err)
+			continue
+		}
+
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			log.Println("Error on parsing JSON message for response:", err)
+			continue
+		}
+
+		err = c.WriteMessage(mt, responseJson)
+		if err != nil {
+			log.Println("Error on writing response to client:", err)
+			break
+		}
 	}
 }

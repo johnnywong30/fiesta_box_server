@@ -1,4 +1,4 @@
-package models
+package messages
 
 type MessageType string
 
