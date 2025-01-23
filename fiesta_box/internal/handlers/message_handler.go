@@ -1,6 +1,10 @@
 package handlers
 
 import (
+	"fmt"
+
+	"github.com/google/uuid"
+
 	"fiesta_box/internal/models/messages"
 	"fiesta_box/internal/models/responses"
 )
@@ -143,8 +147,7 @@ func JoinGameHandler(msg messages.Message) (responses.SocketResponse, error) {
 }
 
 func LeaveGameHandler(msg messages.Message) (responses.SocketResponse, error) {
-	// TODO: unmarshal content JSON string to get game id
-
+	
 	// TODO: Leave game logic	
 
 	response := responses.SocketResponse{
@@ -157,11 +160,17 @@ func LeaveGameHandler(msg messages.Message) (responses.SocketResponse, error) {
 func CreateGameHandler(msg messages.Message) (responses.SocketResponse, error) {
 	// TODO: unmarshal content JSON string
 
+	gameID := uuid.New()
 	// TODO: Create game logic	
+
+	content := map[string]interface{}{
+        "gameID": gameID.String(),
+    }
 
 	response := responses.SocketResponse{
 		Status: responses.Success,
-		Message: "Created game X.",
+		Message: fmt.Sprintf("Created game %s", gameID.String()),
+		Content: content,
 	}
 	return response, nil
 }

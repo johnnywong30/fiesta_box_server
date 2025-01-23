@@ -30,4 +30,5 @@ func (s StatusCode) String() string {
 type SocketResponse struct {
 	Status StatusCode `json:"status"`
 	Message string `json:"message"`
+	Content interface{} `json:"content"`
 }
