@@ -23,5 +23,5 @@ type GameClient struct {
 type Game struct {
 	Clients map[*GameClient]bool `json:"clients"`
 	Broadcast chan responses.SocketResponse `json:"broadcast"`
-	Started GameStatus `json:"started"`
+	Status GameStatus `json:"started"`
 }

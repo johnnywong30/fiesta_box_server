@@ -23,6 +23,6 @@ func NewGame(c *websocket.Conn, room string) games.Game {
 	return games.Game{
 		Clients: clients,
 		Broadcast: make(chan responses.SocketResponse),
-		Started: games.NotStarted,
+		Status: games.NotStarted,
 	}
 }
