@@ -18,10 +18,11 @@ type GameClient struct {
 	Room string `json:"room"`
 	Client *websocket.Conn `json:"client"`
 	UserID string `json:"userID"`
+	Connected bool `json:"connected"`
 }
 
 type Game struct {
-	Clients map[*GameClient]bool `json:"clients"`
+	Clients map[*websocket.Conn]*GameClient `json:"clients"`
 	Broadcast chan responses.SocketResponse `json:"broadcast"`
 	Status GameStatus `json:"started"`
 }
