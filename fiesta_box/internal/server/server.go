@@ -10,12 +10,13 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 
 	"fiesta_box/internal/database"
+	"fiesta_box/internal/services"
 )
 
 type Server struct {
 	port int
-
 	db database.Service
+	game services.GameService
 }
 
 func NewServer() *http.Server {
@@ -24,6 +25,7 @@ func NewServer() *http.Server {
 		port: port,
 
 		db: database.New(),
+		game: services.GameService{},
 	}
 
 	// Declare Server config

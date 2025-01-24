@@ -1,6 +1,8 @@
 package games
 
 import (
+	"sync"
+
 	"github.com/gorilla/websocket"
 
 	"fiesta_box/internal/models/responses"
@@ -25,4 +27,5 @@ type Game struct {
 	Clients map[*websocket.Conn]*GameClient `json:"clients"`
 	Broadcast chan responses.SocketResponse `json:"broadcast"`
 	Status GameStatus `json:"started"`
+	Mutex sync.Mutex `json:"mutex"`
 }

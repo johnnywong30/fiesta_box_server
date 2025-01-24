@@ -130,7 +130,13 @@ func (s *Server) websocketHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		response, err := handlers.HandleMessage(clientMsg)
+		handlerArgs := handlers.HandlerFuncArgs{
+			Message: clientMsg,
+			GameService: &s.game,
+			Client: c,
+		}
+
+		response, err := handlers.HandleMessage(handlerArgs)
 		if err != nil {
 			log.Println("Error on handling message from client:", err)
 			continue

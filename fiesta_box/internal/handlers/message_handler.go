@@ -4,13 +4,22 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 
 	"fiesta_box/internal/models/messages"
 	"fiesta_box/internal/models/responses"
+	"fiesta_box/internal/services"
 )
 
 
-type HandlerFunc func(messages.Message) (responses.SocketResponse, error)
+type HandlerFuncArgs struct {
+	Message messages.Message
+	GameService *services.GameService
+	Client *websocket.Conn
+}
+
+
+type HandlerFunc func(HandlerFuncArgs) (responses.SocketResponse, error)
 
 var HandlerRegistry = make(map[messages.MessageType]HandlerFunc)
 
@@ -18,18 +27,18 @@ func RegisterHandler(messageType messages.MessageType, handler HandlerFunc) {
 	HandlerRegistry[messageType] = handler
 }
 
-func HandleMessage(message messages.Message) (responses.SocketResponse, error) {
-	handler, ok := HandlerRegistry[message.Type]
+func HandleMessage(args HandlerFuncArgs) (responses.SocketResponse, error) {
+	handler, ok := HandlerRegistry[args.Message.Type]
 	if !ok {
 		return responses.SocketResponse{
 			Status: responses.UnknownMessageType,
 			Message: "Unknown message type",
 		}, nil
 	}
-	return handler(message)
+	return handler(args)
 }
 
-func StartGameHandler(msg messages.Message) (responses.SocketResponse, error) {
+func StartGameHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
 	// TODO: unmarshal content JSON string to get game id
 
 	// TODO: Start game logic
@@ -40,7 +49,7 @@ func StartGameHandler(msg messages.Message) (responses.SocketResponse, error) {
 	return response, nil
 }
 
-func TransferMasterHandler(msg messages.Message) (responses.SocketResponse, error) {
+func TransferMasterHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
 	// TODO: unmarshal content JSON string to get game id
 
 	// TODO: Transfer master logic
@@ -51,7 +60,7 @@ func TransferMasterHandler(msg messages.Message) (responses.SocketResponse, erro
 	return response, nil
 }
 
-func ConfigurePromptHandler(msg messages.Message) (responses.SocketResponse, error) {
+func ConfigurePromptHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
 	// TODO: unmarshal content JSON string to get game id, prompt count
 
 	// TODO: Configure prompt logic
@@ -62,7 +71,7 @@ func ConfigurePromptHandler(msg messages.Message) (responses.SocketResponse, err
 	return response, nil
 }
 
-func UseSavedPromptHandler(msg messages.Message) (responses.SocketResponse, error) {
+func UseSavedPromptHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
 	// TODO: unmarshal content JSON string to get game id, prompt id
 
 	// TODO: Use saved prompt logic
@@ -74,7 +83,7 @@ func UseSavedPromptHandler(msg messages.Message) (responses.SocketResponse, erro
 	return response, nil
 }
 
-func WritePromptHandler(msg messages.Message) (responses.SocketResponse, error) {
+func WritePromptHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
 	// TODO: unmarshal content JSON string to get game id, prompt string
 
 	// TODO: Write prompt logic; each prompt should have a uid
@@ -86,7 +95,7 @@ func WritePromptHandler(msg messages.Message) (responses.SocketResponse, error) 
 	return response, nil
 }
 
-func ReceivePromptHandler(msg messages.Message) (responses.SocketResponse, error) {
+func ReceivePromptHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
 	// TODO: unmarshal content JSON string to get game id
 
 	// TODO: Receive prompt logic
@@ -98,7 +107,7 @@ func ReceivePromptHandler(msg messages.Message) (responses.SocketResponse, error
 	return response, nil
 }
 
-func PerformPromptHandler(msg messages.Message) (responses.SocketResponse, error) {
+func PerformPromptHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
 	// TODO: unmarshal content JSON string to get game id, prompt id
 
 	// TODO: Perform prompt logic
@@ -110,7 +119,7 @@ func PerformPromptHandler(msg messages.Message) (responses.SocketResponse, error
 	return response, nil
 }
 
-func DrinkForPromptHandler(msg messages.Message) (responses.SocketResponse, error) {
+func DrinkForPromptHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
 	// TODO: unmarshal content JSON string to get game id, prompt id
 
 	// TODO: Drink for prompt logic
@@ -122,7 +131,7 @@ func DrinkForPromptHandler(msg messages.Message) (responses.SocketResponse, erro
 	return response, nil
 }
 
-func ChangePlayerNameHandler(msg messages.Message) (responses.SocketResponse, error) {
+func ChangePlayerNameHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
 	// TODO: unmarshal content JSON string to get game id, player name
 
 	// TODO: Change player name logic	
@@ -134,7 +143,7 @@ func ChangePlayerNameHandler(msg messages.Message) (responses.SocketResponse, er
 	return response, nil
 }
 
-func JoinGameHandler(msg messages.Message) (responses.SocketResponse, error) {
+func JoinGameHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
 	// TODO: unmarshal content JSON string
 
 	// TODO: Join game logic	
@@ -146,7 +155,7 @@ func JoinGameHandler(msg messages.Message) (responses.SocketResponse, error) {
 	return response, nil
 }
 
-func LeaveGameHandler(msg messages.Message) (responses.SocketResponse, error) {
+func LeaveGameHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
 	
 	// TODO: Leave game logic	
 
@@ -157,7 +166,7 @@ func LeaveGameHandler(msg messages.Message) (responses.SocketResponse, error) {
 	return response, nil
 }
 
-func CreateGameHandler(msg messages.Message) (responses.SocketResponse, error) {
+func CreateGameHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
 	// TODO: unmarshal content JSON string
 
 	gameID := uuid.New()
