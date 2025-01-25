@@ -14,11 +14,6 @@ const (
 	MessageTypeChangePlayerName MessageType 	= "change_player_name"
 )
 
-type MessageInterface interface {
-	GetType() MessageType
-	GetContent() string	
-}
-
 type Message struct {
 	Type MessageType `json:"type"`
 	Content string `json:"content"`

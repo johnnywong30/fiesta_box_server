@@ -21,10 +21,12 @@ type GameService struct{
 } 
 
 
-func (s *GameService) NewGame(c *websocket.Conn, room string) (*games.Game, error) {
+func (s *GameService) NewGame(c *websocket.Conn, done chan *games.Game) (*games.Game, error) {
 	// get access to games map
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	room := uuid.NewString()
 
 	// check if room exists, fail if it does
 	if _, ok := s.games[room]; ok {
@@ -51,14 +53,18 @@ func (s *GameService) NewGame(c *websocket.Conn, room string) (*games.Game, erro
 		Broadcast: make(chan responses.SocketResponse),
 		Status: games.NotStarted,
 		Mutex: sync.Mutex{},
+		Room: room,
 	}
 	// add game room to game service map
 	s.games[room] = &game
+
+	done <- &game
+
 	// return the created game room
 	return &game, nil
 }
 
-func (s *GameService) AddToGame(c *websocket.Conn, room string) (*games.Game, error) {
+func (s *GameService) AddToGame(c *websocket.Conn, room string, done chan bool) (*games.Game, error) {
 	// get access to games map
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -88,12 +94,13 @@ func (s *GameService) AddToGame(c *websocket.Conn, room string) (*games.Game, er
 		}
 
 	game.Broadcast <- serverResponse
+	done <- true
 
 	return game, nil
 	
 }
 
-func (s *GameService) RemoveFromGame(c *websocket.Conn, room string) (*games.Game, error) {
+func (s *GameService) RemoveFromGame(c *websocket.Conn, room string, done chan bool) (*games.Game, error) {
 	// get access to games map
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -126,6 +133,7 @@ func (s *GameService) RemoveFromGame(c *websocket.Conn, room string) (*games.Gam
 		}
 
 	game.Broadcast <- serverResponse
+	done <- true
 
 	return game, nil
 }

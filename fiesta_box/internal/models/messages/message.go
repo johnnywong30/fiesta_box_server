@@ -17,12 +17,7 @@ const (
 	MessageTypeCreateGame MessageType 			= "create_game"
 )
 
-type MessageInterface interface {
-	GetType() MessageType
-	GetContent() string	
-}
-
 type Message struct {
 	Type MessageType `json:"type"`
-	Content interface{} `json:"content"`
+	Content map[string]string `json:"content"`
 }

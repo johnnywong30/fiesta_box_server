@@ -28,4 +28,5 @@ type Game struct {
 	Broadcast chan responses.SocketResponse `json:"broadcast"`
 	Status GameStatus `json:"started"`
 	Mutex sync.Mutex `json:"mutex"`
+	Room string `json:"room"`
 }

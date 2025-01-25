@@ -3,9 +3,9 @@ package handlers
 import (
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
+	"fiesta_box/internal/models/games"
 	"fiesta_box/internal/models/messages"
 	"fiesta_box/internal/models/responses"
 	"fiesta_box/internal/services"
@@ -167,18 +167,19 @@ func LeaveGameHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
 }
 
 func CreateGameHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
-	// TODO: unmarshal content JSON string
+	done := make(chan *games.Game)
 
-	gameID := uuid.New()
-	// TODO: Create game logic	
+	go args.GameService.NewGame(args.Client, done)
+
+	createdGame := <- done
 
 	content := map[string]interface{}{
-        "gameID": gameID.String(),
+        "gameID": createdGame.Room,
     }
 
 	response := responses.SocketResponse{
 		Status: responses.Success,
-		Message: fmt.Sprintf("Created game %s", gameID.String()),
+		Message: fmt.Sprintf("Created game %s", createdGame.Room),
 		Content: content,
 	}
 	return response, nil
