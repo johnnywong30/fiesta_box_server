@@ -144,24 +144,59 @@ func ChangePlayerNameHandler(args HandlerFuncArgs) (responses.SocketResponse, er
 }
 
 func JoinGameHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
-	// TODO: unmarshal content JSON string
+	done := make(chan bool)
 
-	// TODO: Join game logic	
+	value, exists := args.Message.Content["room"]
+	if !exists {
+		return responses.SocketResponse{
+			Status: responses.InvalidMessage,
+			Message: "Invalid message. Missing room field.",
+		}, nil
+	}
+
+	go args.GameService.AddToGame(args.Client, value, done)
+
+	added := <- done
+
+	if !added {
+		return responses.SocketResponse{
+			Status: responses.Error,
+			Message: fmt.Sprintf("Could not join game %s", value),
+		}, nil
+	}
 
 	response := responses.SocketResponse{
 		Status: responses.Success,
-		Message: "Joined game X.",
+		Message: fmt.Sprintf("Joined game %s", value),
 	}
 	return response, nil
 }
 
 func LeaveGameHandler(args HandlerFuncArgs) (responses.SocketResponse, error) {
-	
-	// TODO: Leave game logic	
+	done := make(chan bool)
+
+	value, exists := args.Message.Content["room"]
+	if !exists {
+		return responses.SocketResponse{
+			Status: responses.InvalidMessage,
+			Message: "Invalid message. Missing room field.",
+		}, nil
+	}
+
+	go args.GameService.RemoveFromGame(args.Client, value, done)
+
+	removed := <- done
+
+	if !removed {
+		return responses.SocketResponse{
+			Status: responses.Error,
+			Message: fmt.Sprintf("Could not leave game %s", value),
+		}, nil
+	}
 
 	response := responses.SocketResponse{
 		Status: responses.Success,
-		Message: "Left game X.",
+		Message: fmt.Sprintf("Left game %s", value),
 	}
 	return response, nil
 }

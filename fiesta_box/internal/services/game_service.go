@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/google/uuid"
@@ -20,11 +21,37 @@ type GameService struct{
 	mutex sync.Mutex // mutex around games map
 } 
 
+type GameServiceState struct {
+	Games int `json:"games"`
+	GameStates map[string]games.GameState `json:"gameStates"`
+
+}
+
+func NewGameService() *GameService {
+	return &GameService{
+		games: map[string]*games.Game{},
+		mutex: sync.Mutex{},
+	}
+}
+
+func (s *GameService) CreateGameClient(c *websocket.Conn, room string) *games.GameClient {
+	client := games.GameClient{
+		Room: room,
+		Client: c,
+		UserID: uuid.NewString(),
+		Connected: true,
+	}
+	log.Printf("Created game client %s", client.UserID)
+	return &client
+}
+
 
 func (s *GameService) NewGame(c *websocket.Conn, done chan *games.Game) (*games.Game, error) {
 	// get access to games map
+	log.Print("[NewGame] - Getting gameService lock")
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	defer log.Print("[NewGame] - Releasing gameService lock")
 
 	room := uuid.NewString()
 
@@ -35,16 +62,11 @@ func (s *GameService) NewGame(c *websocket.Conn, done chan *games.Game) (*games.
 	}
 
 	// create game client for this websocket connection
-	client := games.GameClient{
-		Room: room,
-		Client: c,
-		UserID: uuid.NewString(),
-		Connected: true,
-	}
+	client := s.CreateGameClient(c, room)
 
 	// add game client to the game room's client map
 	clients := map[*websocket.Conn]*games.GameClient{
-		c: &client,
+		c: client,
 	}
 
 	// create game room
@@ -57,6 +79,7 @@ func (s *GameService) NewGame(c *websocket.Conn, done chan *games.Game) (*games.
 	}
 	// add game room to game service map
 	s.games[room] = &game
+	log.Printf("Created game room %s", game.Room)
 
 	done <- &game
 
@@ -66,34 +89,39 @@ func (s *GameService) NewGame(c *websocket.Conn, done chan *games.Game) (*games.
 
 func (s *GameService) AddToGame(c *websocket.Conn, room string, done chan bool) (*games.Game, error) {
 	// get access to games map
+	log.Print("[AddToGame] - Getting gameService lock")
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	defer log.Print("[AddToGame] - Releasing gameService lock")
 
 	// check if room exists, fail if it doesn't
 	game, ok := s.games[room]
 	if !ok {
 		var g *games.Game
-		return g, fmt.Errorf("game room %s does not exist - failed to join game", room)
+		err := fmt.Errorf("game room %s does not exist - failed to join game", room)
+		log.Print(err.Error())
+		done <- false
+		return g, err
 	} 
 	
 	// get access to game room
+	log.Printf("[AddToGame] - Getting game %s lock", game.Room)
 	game.Mutex.Lock()
 	defer game.Mutex.Unlock()
+	defer log.Printf("[AddToGame] - Releasing game %s lock", game.Room)
 
-	client := games.GameClient{
-		Room: room,
-		Client: c,
-		UserID: uuid.NewString(),
-		Connected: true,
-		}
-	game.Clients[c] = &client
+	client := s.CreateGameClient(c, room)
+	game.Clients[c] = client
 
-	serverResponse := responses.SocketResponse{
-		Status: responses.Success,
-		Message: fmt.Sprintf("client %s joined game %s", client.UserID, room),
-		}
+	message := fmt.Sprintf("client %s joined game %s", client.UserID, room)
+	log.Print(message)
 
-	game.Broadcast <- serverResponse
+	// serverResponse := responses.SocketResponse{
+	// 	Status: responses.Success,
+	// 	Message: message,
+	// 	}
+
+	// game.Broadcast <- serverResponse
 	done <- true
 
 	return game, nil
@@ -102,24 +130,34 @@ func (s *GameService) AddToGame(c *websocket.Conn, room string, done chan bool) 
 
 func (s *GameService) RemoveFromGame(c *websocket.Conn, room string, done chan bool) (*games.Game, error) {
 	// get access to games map
+	log.Print("[RemoveFromGame] - Getting gameService lock")
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	defer log.Print("[RemoveFromGame] - Releasing gameService lock")
 
 	// check if room exists, fail if it doesn't
 	game, ok := s.games[room]
 	if !ok {
 		var g *games.Game
-		return g, fmt.Errorf("game room %s does not exist - failed to leave game", room)
+		done <- false
+		err := fmt.Errorf("game room %s does not exist - failed to leave game", room)
+		log.Print(err.Error())
+		return g, err
 	}
 
 	// get access to game room
+	log.Printf("[RemoveFromGame] - Getting game %s lock", game.Room)
 	game.Mutex.Lock()
 	defer game.Mutex.Unlock()
+	defer log.Printf("[RemoveFromGame] - Releasing game %s lock", game.Room)
 
 	client, ok := game.Clients[c]
 	if !ok {
 		var g *games.Game
-		return g, fmt.Errorf("game client does not exist in room %s - failed to leave game", room)
+		done <- false
+		err := fmt.Errorf("game client does not exist in room %s - failed to leave game", room)
+		log.Print(err.Error())
+		return g, err
 	}
 
 	clientID := client.UserID
@@ -127,13 +165,49 @@ func (s *GameService) RemoveFromGame(c *websocket.Conn, room string, done chan b
 	// kick client from game room's client map
 	delete(game.Clients, c)
 
-	serverResponse := responses.SocketResponse{
-		Status: responses.Success,
-		Message: fmt.Sprintf("client %s left game %s", clientID, room),
-		}
+	message := fmt.Sprintf("Client %s left game room %s", clientID, room)
 
-	game.Broadcast <- serverResponse
+	log.Print(message)
+
+	// if len(game.Clients) == 0 {
+	// 	// remove game room from game service map if no clients remain
+	// 	defer delete(s.games, room)
+	// 	log.Printf("Deleted game room %s. No players remaining.", room)
+	// }
+
+	// serverResponse := responses.SocketResponse{
+	// 	Status: responses.Success,
+	// 	Message: message,
+	// 	}
+
+	// game.Broadcast <- serverResponse
 	done <- true
 
 	return game, nil
+}
+
+func (s *GameService) ServiceHealth() GameServiceState {
+	// get access to games map
+	log.Print("[ServiceHealth] - Getting gameService lock")
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	defer log.Print("[ServiceHealth] - Releasing gameService lock")
+
+
+	gameStates := make(map[string]games.GameState)
+
+	for room, game := range s.games {
+		gameStates[room] = games.GameState{
+			Clients: len(game.Clients),
+			Status: game.Status,
+			Room: room,
+		}
+	}
+
+	games := len(s.games)
+
+	return GameServiceState{
+		Games: games,
+		GameStates: gameStates,
+	}
 }

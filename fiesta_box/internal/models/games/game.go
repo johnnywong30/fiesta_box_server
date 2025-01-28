@@ -30,3 +30,9 @@ type Game struct {
 	Mutex sync.Mutex `json:"mutex"`
 	Room string `json:"room"`
 }
+
+type GameState struct {
+	Clients int `json:"clients"`
+	Status GameStatus `json:"status"`
+	Room string `json:"room"`
+}

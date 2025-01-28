@@ -16,16 +16,19 @@ import (
 type Server struct {
 	port int
 	db database.Service
-	game services.GameService
+	game *services.GameService
 }
 
 func NewServer() *http.Server {
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
+
+	gameService := services.NewGameService()	
+
 	NewServer := &Server{
 		port: port,
 
 		db: database.New(),
-		game: services.GameService{},
+		game: gameService,
 	}
 
 	// Declare Server config

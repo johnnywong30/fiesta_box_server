@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -20,9 +21,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 	// Apply CORS middleware
 	r.Use(s.corsMiddleware)
 
-	r.HandleFunc("/", s.HelloWorldHandler)
+	r.HandleFunc("/", s.healthHandler)
 
-	r.HandleFunc("/health", s.healthHandler)
+	r.HandleFunc("/games/health", s.gameServiceHealthHandler)
 
 	// Register websocket message handlers
 	handlers.RegisterHandler(messages.MessageTypeStartGame, handlers.StartGameHandler)
@@ -65,31 +66,6 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) HelloWorldHandler(w http.ResponseWriter, r *http.Request) {
-	resp := make(map[string]string)
-	resp["message"] = "Hello World"
-
-	jsonResp, err := json.Marshal(resp)
-	if err != nil {
-		log.Fatalf("error handling JSON marshal. Err: %v", err)
-	}
-
-	_, _ = w.Write(jsonResp)
-}
-
-// func (s *Server) GorillaHandler(w http.ResponseWriter, r *http.Request) {
-// 	// Use interface{} to avoid type assertions and use any type for the value in the JSON
-// 	resp := make(map[string]interface{})
-// 	resp["name"] = "Johnny"
-// 	resp["weight"] = 170
-
-// 	jsonResp, err := json.Marshal(resp)
-// 	if err != nil {
-// 		log.Fatalf("error handling JSON marshal. Err: %v", err)
-// 	}
-
-// 	_, _ = w.Write(jsonResp)
-// }
 
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	jsonResp, err := json.Marshal(s.db.Health())
@@ -98,6 +74,18 @@ func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("error handling JSON marshal. Err: %v", err)
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(jsonResp)
+}
+
+func (s *Server) gameServiceHealthHandler(w http.ResponseWriter, r *http.Request) {
+	jsonResp, err := json.Marshal(s.game.ServiceHealth())
+
+	if err != nil {
+		log.Fatalf("error handling JSON marshal. Err: %v", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(jsonResp)
 }
 
@@ -113,45 +101,60 @@ func (s *Server) websocketHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer c.Close()
 
+	// Handle websocket connection
+
+	go func() {
+		for {
+			mt, message, err := c.ReadMessage()
+			if err != nil {
+				log.Println("Error on reading message from client:", err)
+				break
+			}
+			log.Printf("Received from client the message: %s", message)
+	
+			// Determine message type
+			var clientMsg messages.Message
+			err = json.Unmarshal(message, &clientMsg)
+	
+			if err != nil {
+				log.Println("Error on parsing JSON message from client:", err)
+				break
+			}
+	
+			handlerArgs := handlers.HandlerFuncArgs{
+				Message: clientMsg,
+				GameService: s.game,
+				Client: c,
+			}
+	
+			response, err := handlers.HandleMessage(handlerArgs)
+			if err != nil {
+				log.Println("Error on handling message from client:", err)
+				continue
+			}
+	
+			responseJson, err := json.Marshal(response)
+			if err != nil {
+				log.Println("Error on parsing JSON message for response:", err)
+				continue
+			}
+	
+			err = c.WriteMessage(mt, responseJson)
+			if err != nil {
+				log.Println("Error on writing response to client:", err)
+				break
+			}
+		}
+	}()
+
+	// Keep the connection alive with periodic pings
 	for {
-		mt, message, err := c.ReadMessage()
-		if err != nil {
-			log.Println("Error on reading message from client:", err)
+		if err := c.WriteMessage(websocket.PingMessage, nil); err != nil {
+			log.Printf("Ping failed: %v", err)
 			break
 		}
-		log.Printf("Received from client the message: %s", message)
-
-		// Determine message type
-		var clientMsg messages.Message
-		err = json.Unmarshal(message, &clientMsg)
-
-		if err != nil {
-			log.Println("Error on parsing JSON message from client:", err)
-			break
-		}
-
-		handlerArgs := handlers.HandlerFuncArgs{
-			Message: clientMsg,
-			GameService: &s.game,
-			Client: c,
-		}
-
-		response, err := handlers.HandleMessage(handlerArgs)
-		if err != nil {
-			log.Println("Error on handling message from client:", err)
-			continue
-		}
-
-		responseJson, err := json.Marshal(response)
-		if err != nil {
-			log.Println("Error on parsing JSON message for response:", err)
-			continue
-		}
-
-		err = c.WriteMessage(mt, responseJson)
-		if err != nil {
-			log.Println("Error on writing response to client:", err)
-			break
-		}
+		time.Sleep(30 * time.Second) // Send a ping every 30 seconds
 	}
+	
+	
 }
